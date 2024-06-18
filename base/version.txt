@@ -1,0 +1,7 @@
+hbuilderx_version=4.15
+android_version=14.15
+fastapp_version=1.0.16
+iphone_version=14.15
+inner_android_sdk_version=1.9.9.82065
+inner_ios_sdk_version=1.9.9.81342
+ios_expires=2025-06-14
