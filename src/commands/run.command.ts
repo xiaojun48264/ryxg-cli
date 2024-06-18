@@ -7,7 +7,7 @@ import { getRemainingFlags } from '@/lib/utils/remaining-flags'
 
 const PlatformChoices = [
   { title: 'Android', value: 'android' },
-  { title: '微信小程序', value: 'wx' },
+  // { title: '微信小程序', value: 'wx' },
 ]
 
 export class RunCommand extends AbstractCommand {

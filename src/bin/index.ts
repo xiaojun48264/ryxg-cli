@@ -3,12 +3,13 @@ import { Command } from 'commander'
 import { loadLocalBinCommandLoader, localBinExists } from '@/lib/utils/local-binaries'
 import { CommandLoader } from '@/commands'
 import figlet from "figlet";
+import pak from '../../package.json'
 
 const bootstrap = async () => {
   const program = new Command()
   program
     .name('ry')
-    .version('0.0.1', '-v, --version', '输出当前版本')
+    .version(pak.version, '-v, --version', '输出当前版本')
     .usage('<command> [options]')
     .helpOption('-h, --help', '查看帮助')
 
