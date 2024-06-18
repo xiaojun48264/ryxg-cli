@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+import{Command as a}from"commander";import{localBinExists as n,loadLocalBinCommandLoader as r}from"../lib/utils/local-binaries.mjs";import{CommandLoader as e}from"../commands/command.loader.mjs";import t from"figlet";const s=async()=>{const o=new a;o.name("ry").version("0.0.1","-v, --version","\u8F93\u51FA\u5F53\u524D\u7248\u672C").usage("<command> [options]").helpOption("-h, --help","\u67E5\u770B\u5E2E\u52A9"),n()?await r().load(o):await e.load(o),console.log(`${t.textSync("ryxg",{horizontalLayout:"full"})}
+`),await o.parseAsync(process.argv),process.argv.slice(2).length||o.outputHelp()};s();

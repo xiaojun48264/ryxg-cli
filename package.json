@@ -9,15 +9,16 @@
   "bin": {
     "ry": "dist/bin/index.mjs"
   },
-  "files": [
-    "dist"
-  ],
   "publishConfig": {
     "access": "public"
   },
   "keywords": ["uni-app", "cli", "ryxg"],
   "author": "xiaojun",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xiaojun48264/ryxg-cli/issues"
+  },
+  "homepage": "https://github.com/xiaojun48264/ryxg-cli",
   "devDependencies": {
     "@rollup/plugin-url": "^8.0.2",
     "@types/adm-zip": "^0.5.5",
