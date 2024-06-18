@@ -40,6 +40,12 @@ export class RunAction extends BuildAction {
     const launcher = createLauncher(platform as string)!
     const deviceList = await launcher.getMobileList()
     spinner.stop()
+
+    if (deviceList.length === 0) {
+      console.log(chalk.red('✖') + ' 未找到可用设备')
+      process.exit(1)
+    }
+
     const manifest = await getManifest(projectPath)
 
     const config: RunConfig = {

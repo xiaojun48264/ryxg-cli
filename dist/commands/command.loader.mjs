@@ -1,2 +1,0 @@
-import{RunCommand as n}from"./run.command.mjs";import{RunAction as m}from"../actions/run.action.mjs";import{ERROR_PREFIX as a}from"../lib/ui/prefixes.mjs";import u from"chalk";class r{static async load(o){new n(new m).load(o),this.handleInvalidCommand(o)}static handleInvalidCommand(o){o.on("command:*",()=>{console.error(`
-${a} \u65E0\u6548\u7684\u547D\u4EE4\uFF1A${u.red("%s")}`,o.args.join(" ")),console.log(`\u6709\u5173\u53EF\u7528\u547D\u4EE4\u7684\u5217\u8868\uFF0C\u8BF7\u53C2\u89C1 ${u.red("--help")}`),process.exit(1)})}}export{r as CommandLoader};
