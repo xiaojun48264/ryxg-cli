@@ -6,12 +6,12 @@ import { DeviceLauncher } from './deviceLauncher'
 import { getFormatLine, getLogStrNoLevel, getLogType, printLogConSole } from '../utils/logs'
 
 export class LauncherBase {
-  currentApp = new App()
-  currentMobile = new Mobile()
+  currentApp: App | null = null
+  currentMobile: Mobile | null = null
   runState = 0
   uniAppVueTempAppID = '__UNI__temp__'
   deviceLauncher: DeviceLauncher | null = null
-  #project = new Project()
+  #project: Project | null = null
   constructor() {}
 
   /**

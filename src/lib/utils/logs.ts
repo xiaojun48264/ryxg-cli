@@ -31,7 +31,7 @@ export function checkLogs() {
 /**
  * 运行日志
  */
-export function runLogs() {
+export function runLogs(title: string = '项目日志') {
   clearLogs()
   const _platform = platform()
   let command = ''
@@ -43,9 +43,11 @@ export function runLogs() {
       args = [
         '/c',
         'start',
-        'cmd.exe',
-        '/k',
-        `powershell.exe -NoExit -Command "Get-Content -Path '${LogsFilePath}' -Wait -Encoding UTF8"`,
+        `"${title}"`,
+        'powershell.exe',
+        '-NoExit',
+        '-Command',
+        `Get-Content -Path '${LogsFilePath}' -Wait -Encoding UTF8`,
       ]
       break
 
@@ -64,6 +66,7 @@ export function runLogs() {
   }
   if (!!command) {
     const oldPids = getPidByProcessName(['cmd.exe', 'powershell.exe'])
+    
     spawn(command, args, { shell: _platform === 'win32' ? true : false })
     let diffPids: number[] = []
     setTimeout(() => {

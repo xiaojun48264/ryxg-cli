@@ -123,7 +123,7 @@ function appendCompilePath(config: RunConfig) {
 async function appendBaseInfo(config: RunConfig, isCustomBase: boolean) {
   if (isCustomBase) {
     let mUnpackagePath = getUnpackagePath(config.isCli, config.projectPath)
-    if (config.platform == 'andorid') {
+    if (config.platform == 'android') {
       config.androidBasePath = path.resolve(mUnpackagePath, 'debug', 'android_debug.apk')
     }
   }

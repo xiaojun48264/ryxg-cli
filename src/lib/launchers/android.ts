@@ -13,7 +13,11 @@ import {
   getIPAddress,
   getStandardPathByPlatform,
   getUTF8Str,
+  getZipEntriesFile,
   isFilterFile,
+  parseSpecilXML,
+  parseXML2Json,
+  readZipFile,
 } from '../utils/tools'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
@@ -35,7 +39,6 @@ export class AndroidLauncher extends LauncherBase {
   webSocketPort = 0
   httpProPID = 0
   useLan = false
-  isCustomBase = false
   basePath = ''
   hasBuildError = false
   wifiServer: WifiServer | null = null
@@ -68,7 +71,7 @@ export class AndroidLauncher extends LauncherBase {
 
   async startApp() {
     const type = this.currentApp?.type
-    if (!!this.currentApp.appID && !!this.currentMobile.udid) {
+    if (!!this.currentApp && !!this.currentMobile) {
       try {
         // 建立adb映射
         const startStr = `${this.currentApp.getPackageName()}/${
@@ -89,7 +92,7 @@ export class AndroidLauncher extends LauncherBase {
    */
   async installBase(basePath: string) {
     let result = true
-    if (!!this.currentMobile.udid) {
+    if (!!this.currentMobile) {
       try {
         await exeCMDAndroid(adbPath, '-s', this.currentMobile.udid, 'install', '-r', '-d', '-t', basePath)
       } catch (error) {
@@ -105,7 +108,7 @@ export class AndroidLauncher extends LauncherBase {
    * 查看基座是否已安装
    */
   async isAppExist() {
-    if (!!this.currentApp.appID && !!this.currentMobile.udid) {
+    if (!!this.currentApp && !!this.currentMobile) {
       const packageName = this.currentApp.getPackageName()
       const tmpValue = await exeCMDAndroid(
         adbPath,
@@ -131,7 +134,7 @@ export class AndroidLauncher extends LauncherBase {
     let versionResult = false
     let timeResult = false
 
-    if (!!this.currentApp.appID && !!this.currentMobile.udid) {
+    if (!!this.currentApp && !!this.currentMobile) {
       try {
         const packageName = this.currentApp.getPackageName()
         const tmpValue = await exeCMDAndroid(
@@ -186,7 +189,7 @@ export class AndroidLauncher extends LauncherBase {
    * 卸载基座
    */
   async uninstallBase() {
-    if (!!this.currentApp.appID && !!this.currentMobile.udid) {
+    if (!!this.currentApp && !!this.currentMobile) {
       const packageName = this.currentApp.getPackageName()
       try {
         await exeCMDAndroid(adbPath, '-s', this.currentMobile.udid, 'uninstall', packageName)
@@ -211,7 +214,7 @@ export class AndroidLauncher extends LauncherBase {
 
     // 做Http端口的映射
     const port = parseInt(this.httpPort)
-    const httpPortAgent = await this.createPortAgent(port, this.currentMobile.udid)
+    const httpPortAgent = await this.createPortAgent(port, this.currentMobile!.udid)
     if (!httpPortAgent) {
       this.useLan = true
     }
@@ -243,7 +246,12 @@ export class AndroidLauncher extends LauncherBase {
         project.getPath(),
         project.getType()
       )
-      this.isCustomBase = true
+      const notSupprt = this.showNotSupprotTips(app)
+      if (notSupprt) {
+        return false
+      }
+      await this.showDiffSDKTips(app)
+      app.isCustomBase = true
     }
     const lastTime = getFileLastModifyTime(config.androidBasePath)
     app.setAppTime(lastTime)
@@ -279,7 +287,7 @@ export class AndroidLauncher extends LauncherBase {
     }
     // 启动基座服务
     result = await this.startBaseServer(config.mobile.udid)
-    runLogs()
+    runLogs(app.getName())
     let needCompressForder = config.compilePath + '/'
     if (project.getType() === 'UniApp') {
       const pagePath = config.pagePath
@@ -299,7 +307,7 @@ export class AndroidLauncher extends LauncherBase {
       const clientID = this.wifiServer?.getClientInfo()
       console.log('检查客户端是否链接', clientID)
       if (clientID !== '') {
-        compressFilesStream(needCompressForder, this.currentApp.getName())
+        compressFilesStream(needCompressForder, this.currentApp!.getName())
           .then(packagePath => {
             this.pushResources(packagePath, true)
           })
@@ -311,7 +319,7 @@ export class AndroidLauncher extends LauncherBase {
       if (timeOut >= 30) {
         clearInterval(timmer)
         console.error('同步资源失败授权')
-        if (this.currentApp.getIsCustomBase()) {
+        if (this.currentApp!.getIsCustomBase()) {
           console.error('离线基座')
         }
       }
@@ -325,7 +333,7 @@ export class AndroidLauncher extends LauncherBase {
    * 开启基座服务
    */
   async startBaseServer(udid: string) {
-    if (!!this.currentApp.appID) {
+    if (!!this.currentApp) {
       const IP = this.getIP()
       const packageName = this.currentApp.getPackageName()
       const tmpAppInfoStr = packageName + '/' + 'io.dcloud.debug.PullDebugActivity'
@@ -356,7 +364,7 @@ export class AndroidLauncher extends LauncherBase {
    * 杀死App
    */
   async stopApp() {
-    if (!!this.currentApp.appID && !!this.currentMobile.udid) {
+    if (!!this.currentApp && !!this.currentMobile) {
       try {
         await exeCMDAndroid(
           adbPath,
@@ -640,7 +648,59 @@ export class AndroidLauncher extends LauncherBase {
   /**
    *  设置自定义基座的App信息
    */
-  async initCustomBaseAppInfo(appID: string, app: App, packagePath: string, projectPath: string, projectType: string) {}
+  async initCustomBaseAppInfo(appID: string, app: App, packagePath: string, projectPath: string, projectType: string) {
+    let innerVersion = ''
+    try {
+      const data = await parseSpecilXML(packagePath)
+      if (!!data) {
+        app.setPackageName(data.package)
+      }
+    } catch (error) {
+      printLog('解析AndroidManifest.xml文件失败', 'error')
+    }
+    // 针对离线打包的apk
+    try {
+      const dcloudConfigs = readZipFile(packagePath, 'assets/data/dcloud_configs.json')
+      if (!!dcloudConfigs) {
+        const data = JSON.parse(dcloudConfigs as string)
+        if (data && data.iv) {
+          innerVersion = data.iv
+          app.setInnerVerison(innerVersion)
+        }
+      }
+    } catch (error) {
+      printLog('解析dcloud_configs.json文件失败', 'error')
+    }
+    // 解析dcloud_control.xml
+    const dcloudControlXml = readZipFile(packagePath, 'assets/data/dcloud_control.xml')
+    if (dcloudControlXml) {
+      try {
+        const data = await parseXML2Json(dcloudControlXml, 'buffer')
+        const obj = data[Object.keys(data)[0]]
+        if (!!obj) {
+          if (innerVersion === '') {
+            innerVersion = obj.version
+            app.setInnerVerison(innerVersion)
+          }
+          // app.setID(obj.apps.app.appid)
+          // app.setAppVersion(obj.apps.app.appver)
+        }
+      } catch (error) {
+        printLog('解析dcloud_control.xml文件失败', 'error')
+      }
+    }
+
+    const manifestJson = getZipEntriesFile(packagePath, 'manifest.json')
+    if (manifestJson) {
+      try {
+        const data = JSON.parse(manifestJson)
+        app.setID(data?.id)
+        app.setAppVersion(data?.version?.name)
+      } catch (e) {
+        printLog('解析manifest.json文件失败', 'error')
+      }
+    }
+  }
 
   /**
    * 建立WifiServer
@@ -650,7 +710,7 @@ export class AndroidLauncher extends LauncherBase {
     this.wifiServer = new WifiServer(this.webSocketPort)
     this.wifiServer.initState()
     this.wifiServer.setCurrentLauncher(this)
-    if (!!this.currentApp.appID) {
+    if (!!this.currentApp) {
       this.wifiServer.applicationName = this.currentApp.getName()
     }
     if (this.useLan) {
@@ -706,7 +766,7 @@ export class AndroidLauncher extends LauncherBase {
         fullPackage: true,
         firstInstall: isFirstInstall,
       })
-      if (!!this.currentApp.getAppID()) {
+      if (!!this.currentApp) {
         root.contents.app.appID = this.currentApp.getID()
         root.contents.app.customBase = this.currentApp.getIsCustomBase()
       }
@@ -723,7 +783,7 @@ export class AndroidLauncher extends LauncherBase {
    */
   async isNeedFullUpdate(fileList: string[], compilePath: string) {
     let result = false
-    if (compilePath != '' && fileList.length == 0 && !!this.currentApp.getAppID()) {
+    if (compilePath != '' && fileList.length == 0 && !!this.currentApp) {
       result = true
       compressFilesStream(compilePath, this.currentApp.getID())
         .then(packagePath => {
@@ -757,7 +817,7 @@ export class AndroidLauncher extends LauncherBase {
         project: {},
       }
       const project = this.getCurrentProject()
-      if (!!project.getAppID()) {
+      if (!!project) {
         data.project.type = project.getType()
         data.project.appID = project.getAppID()
       }
@@ -779,7 +839,7 @@ export class AndroidLauncher extends LauncherBase {
         if (destPath.lastIndexOf('/') == -1) {
           destPath = '/'
         } else {
-          if (!!project.getAppID()) {
+          if (!!project) {
             destPath = this.getPushDestPath(item, project)
             if (destPath == '') {
               continue
@@ -795,7 +855,7 @@ export class AndroidLauncher extends LauncherBase {
       if (data.contents.fileInfo.length === 0) {
         return true
       }
-      if (!!this.currentApp.getID()) {
+      if (!!this.currentApp) {
         data.contents.app.appID = this.currentApp.getID()
         data.contents.app.customBase = this.currentApp.getIsCustomBase()
       }
@@ -847,5 +907,27 @@ export class AndroidLauncher extends LauncherBase {
       _path = filePath.replace(tmpFileName, '')
     }
     return _path
+  }
+
+  /**
+   * 显示SDK版本的不同
+   */
+  async showDiffSDKTips(app: App) {
+    const standardSDKVersion = await getBaseVersion('inner_android_sdk_version')
+    const oldAppInnerVerion = app.getInnerVersion()
+    if (standardSDKVersion !== oldAppInnerVerion) {
+      printLog('自定义基座SDK不同', 'error')
+    }
+  }
+
+  /**
+   * 显示不支持自定义基座版本的信息
+   */
+  showNotSupprotTips(app: App) {
+    if (compairVersion(app.getInnerVersion(), '1.9.9.81430') > 0) {
+      printLog('当前版本不支持自定义基座', 'error')
+      return true
+    }
+    return false
   }
 }

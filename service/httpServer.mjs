@@ -32,7 +32,6 @@ httpServer.on('request', (request, response) => {
       response.writeHead(200, {})
       fs.createReadStream(path).pipe(response)
     } else {
-      console.log("文件不存在", path);
       response.write('404')
       response.end()
     }

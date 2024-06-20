@@ -13,8 +13,11 @@ import archiver from 'archiver'
 import { getPidByProcessName, printLog } from './logs'
 import treeKill from 'tree-kill'
 import { Project } from '../launchers/project'
-import { debounce } from "lodash-es";
+import { debounce } from 'lodash-es'
 import { RunConfig } from '@/actions'
+import xmlManifestDecoder from 'xml-manifest-decoder'
+import xml2js from 'xml2js'
+import AdmZip from 'adm-zip'
 
 export async function exeCMDAndroid(adbPath: string, ...cmdStr: string[]) {
   try {
@@ -318,7 +321,6 @@ export function compressFilesStream(sourcePath: string, projectName: string, suf
  * 编译项目
  */
 export function compileProject(config: RunConfig): Promise<boolean> {
-
   const handleUpdate = debounce(() => {
     config.deviceLauncher.pushResources(config)
   }, 500)
@@ -446,4 +448,57 @@ export function isFilterFiles(projectPath: string, filePath: string, isSingle: b
     }
   }
   return result
+}
+
+/**
+ * 解析特定的xml
+ */
+export async function parseSpecilXML(xmlFile: string) {
+  const fileBlob = await readFile(xmlFile)
+  return await xmlManifestDecoder(fileBlob as any)
+}
+/**
+ * 解析xml文件返回Json
+ */
+export async function parseXML2Json(xml: string | Buffer, type: string) {
+  // 去掉$符
+  const parser = new xml2js.Parser({
+    mergeAttrs: true,
+    attrkey: 'ANYTHINGELSE',
+    explicitArray: false,
+  })
+  let data = type === 'buffer' ? xml.toString('utf-8') : await readFile(xml, { encoding: 'utf-8' })
+  data = data.replace(/^\ufeff/i, '').replace(/^\ufffe/i, '')
+  return await parser.parseStringPromise(data)
+}
+
+/**
+ * 读取压缩包文件
+ */
+export function readZipFile(zipPath: string, filePath: string, type?: string) {
+  try {
+    const zip = new AdmZip(zipPath)
+    return type === 'buffer' ? zip.readFile(filePath) : zip.readAsText(filePath)
+  } catch (error) {
+    return ''
+  }
+}
+
+/**
+ * 获取Zip条目文件
+ */
+export function getZipEntriesFile(zipPath: string, fileName: string) {
+  try {
+    const zip = new AdmZip(zipPath)
+    const zipEntries = zip.getEntries()
+    let res = ''
+    zipEntries.forEach(function (zipEntry) {
+      if (zipEntry.entryName.endsWith(fileName)) {
+        res = zipEntry.getData().toString('utf8')
+      }
+    })
+    return res
+  } catch (e) {
+    return ''
+  }
 }
