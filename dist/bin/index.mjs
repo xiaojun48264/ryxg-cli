@@ -1,14 +1,3 @@
 #!/usr/bin/env node
-import jiti from "file:///F:/project/ryxg-cli/node_modules/.pnpm/jiti@1.21.3/node_modules/jiti/lib/index.js";
-
-/** @type {import("F:/project/ryxg-cli/src/bin/index")} */
-const _module = jiti(null, {
-  "esmResolve": true,
-  "interopDefault": true,
-  "alias": {
-    "@ryxg/cli": "F:/project/ryxg-cli",
-    "@": "F:\\project\\ryxg-cli\\src\\"
-  }
-})("F:/project/ryxg-cli/src/bin/index.ts");
-
-export default _module;
+import{Command as a}from"commander";import{localBinExists as n,loadLocalBinCommandLoader as r}from"../lib/utils/local-binaries.mjs";import{CommandLoader as e}from"../commands/command.loader.mjs";import t from"figlet";import i from"../package.json.mjs";const m=async()=>{const o=new a;o.name("ry").version(i.version,"-v, --version","\u8F93\u51FA\u5F53\u524D\u7248\u672C").usage("<command> [options]").helpOption("-h, --help","\u67E5\u770B\u5E2E\u52A9"),n()?await r().load(o):await e.load(o),console.log(`${t.textSync("ryxg",{horizontalLayout:"full"})}
+`),await o.parseAsync(process.argv),process.argv.slice(2).length||o.outputHelp()};m();

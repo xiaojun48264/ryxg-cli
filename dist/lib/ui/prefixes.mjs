@@ -1,0 +1,1 @@
+import b from"chalk";const g=b.bgRgb(210,0,75).bold.rgb(0,0,0)(" Error "),R=b.bgRgb(134,144,156).bold.rgb(0,0,0)(" Info "),r=b.bgRgb(255,200,0).bold.rgb(0,0,0)(" Warn "),o=b.bgRgb(0,200,100).bold.rgb(0,0,0)(" Success ");export{g as ERROR_PREFIX,R as INFO_PREFIX,o as SUCCESS_PREFIX,r as WARN_PREFIX};
